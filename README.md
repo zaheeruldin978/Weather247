@@ -178,7 +178,7 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 ## 👥 Team
 
 ### **Project Lead & Backend Developer**
-**Muhammad Zaheer Uddin**
+**Muhammad Zaheer Ul Din Babar**
 - GitHub: [@zaheeruldin978](https://github.com/zaheeruldin978)
 - Role: Backend Development, Django, Machine Learning, Database Design
 - Project: Final Year Project - Weather247
