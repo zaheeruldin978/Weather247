@@ -206,4 +206,4 @@ For support and questions:
 
 **Weather247** - Making weather forecasting accessible and intelligent! 🌤️✨
 
-*Built with ❤️ by Muhammad Zaheer Uddin & Waqas Ahmad*
+*Built with ❤️ by Muhammad Zaheer Ul Din Babar & Waqas Ahmad*
