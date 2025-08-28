@@ -1,0 +1,59 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Sign Out - Weather-247{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+    <div class="max-w-md w-full space-y-8">
+        <!-- Logo and Header -->
+        <div class="text-center">
+            <div class="mx-auto h-16 w-16 bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl flex items-center justify-center mb-6">
+                <svg class="h-10 w-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
+                </svg>
+            </div>
+            <h2 class="text-3xl font-bold text-gray-900 mb-2">Sign Out</h2>
+            <p class="text-gray-600">Are you sure you want to sign out?</p>
+        </div>
+
+        <!-- Logout Form -->
+        <div class="bg-white rounded-2xl shadow-xl p-8">
+            <form class="space-y-6" method="POST">
+                {% csrf_token %}
+                
+                <div class="text-center">
+                    <p class="text-gray-600 mb-6">You will be signed out of your Weather-247 account</p>
+                    
+                    <button type="submit" 
+                            class="w-full bg-gradient-to-r from-red-600 to-pink-600 text-white py-3 px-4 rounded-xl font-semibold hover:from-red-700 hover:to-pink-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-all duration-200 transform hover:scale-105">
+                        Sign Out
+                    </button>
+                </div>
+            </form>
+
+            <!-- Divider -->
+            <div class="mt-6">
+                <div class="relative">
+                    <div class="absolute inset-0 flex items-center">
+                        <div class="w-full border-t border-gray-300"></div>
+                    </div>
+                    <div class="relative flex justify-center text-sm">
+                        <span class="px-2 bg-white text-gray-500">Changed your mind?</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Cancel Link -->
+            <div class="mt-6 text-center">
+                <a href="{% url 'weather_dashboard:dashboard' %}" 
+                   class="text-blue-600 hover:text-blue-500 font-medium">
+                    Stay signed in
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+

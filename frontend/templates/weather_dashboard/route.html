@@ -1,0 +1,780 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Route Planning - Weather-247{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 py-8" x-data="routePlanning" x-init="init()" x-cloak>
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <!-- Page Header -->
+        <div class="mb-8">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-4">
+                    <div class="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-emerald-500 via-teal-500 to-cyan-600 rounded-2xl shadow-xl border border-emerald-400/20 hover:shadow-2xl transition-all duration-300 transform hover:scale-105">
+                        <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-1.447-.894L15 4m0 13V4m0 0L9 7"></path>
+                        </svg>
+                    </div>
+                    <div>
+                        <h1 class="text-3xl font-bold text-gray-900">Route Planning</h1>
+                        <p class="text-gray-600 mt-1">Plan your journey with weather-aware routing</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Route Input Form -->
+        <div class="bg-white/80 backdrop-blur-sm rounded-3xl shadow-xl border border-white/20 p-8 mb-8">
+            <div class="text-center mb-6">
+                <h2 class="text-2xl font-bold text-gray-900 mb-2">Plan Your Journey</h2>
+                <p class="text-gray-600">Enter your travel details to get weather-aware route recommendations</p>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Origin City</label>
+                        <div class="relative">
+                            <input type="text" x-model="origin" placeholder="e.g., London" 
+                                   @input="searchOriginCities()"
+                                   @focus="searchOriginCities()"
+                                   @keyup.enter="selectOriginCity()"
+                                   @keyup="searchOriginCities()"
+                                   class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all duration-300 bg-white/90 backdrop-blur-sm">
+                            <div class="absolute inset-y-0 right-0 pr-3 flex items-center">
+                                <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
+                                </svg>
+                            </div>
+                            
+                            <!-- Origin City Search Dropdown -->
+                            <div x-show="origin && filteredOriginCities.length > 0" 
+                                 class="absolute z-50 w-full mt-2 bg-white border border-gray-200 rounded-2xl shadow-2xl max-h-60 overflow-y-auto">
+                                <div class="p-2">
+                                    <div class="text-xs font-medium text-gray-500 px-3 py-2 border-b border-gray-100">
+                                        <span x-text="filteredOriginCities.length + ' cities found'"></span>
+                                    </div>
+                                    <template x-for="city in filteredOriginCities" :key="city">
+                                        <div @click="selectOriginCity(city)" 
+                                             class="px-4 py-3 hover:bg-gradient-to-r hover:from-emerald-50 hover:to-teal-50 cursor-pointer rounded-xl mx-1 transition-all duration-200 group">
+                                            <div class="flex items-center gap-3">
+                                                <div class="w-6 h-6 bg-gradient-to-br from-emerald-100 to-teal-100 rounded-full flex items-center justify-center">
+                                                    <svg class="w-3 h-3 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
+                                                    </svg>
+                                                </div>
+                                                <div class="font-medium text-gray-900 group-hover:text-emerald-700 transition-colors duration-200" x-text="city"></div>
+                                            </div>
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
+                        </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Destination City</label>
+                        <div class="relative">
+                            <input type="text" x-model="destination" placeholder="e.g., London" 
+                                   @input="searchDestCities()"
+                                   @focus="searchDestCities()"
+                                   @keyup.enter="selectDestCity()"
+                                   @keyup="searchDestCities()"
+                                   class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all duration-300 bg-white/90 backdrop-blur-sm">
+                            <div class="absolute inset-y-0 right-0 pr-3 flex items-center">
+                                <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-1.447-.894L15 4m0 13V4m0 0L9 7"></path>
+                                </svg>
+                            </div>
+                            
+                            <!-- Destination City Search Dropdown -->
+                            <div x-show="destination && filteredDestCities.length > 0" 
+                                 class="absolute z-50 w-full mt-2 bg-white border border-gray-200 rounded-2xl shadow-2xl max-h-60 overflow-y-auto">
+                                <div class="p-2">
+                                    <div class="text-xs font-medium text-gray-500 px-3 py-2 border-b border-gray-100">
+                                        <span x-text="filteredDestCities.length + ' cities found'"></span>
+                                    </div>
+                                    <template x-for="city in filteredDestCities" :key="city">
+                                        <div @click="selectDestCity(city)" 
+                                             class="px-4 py-3 hover:bg-gradient-to-r hover:from-emerald-50 hover:to-teal-50 cursor-pointer rounded-xl mx-1 transition-all duration-200 group">
+                                            <div class="flex items-center gap-3">
+                                                <div class="w-6 h-6 bg-gradient-to-br from-emerald-100 to-teal-100 rounded-full flex items-center justify-center">
+                                                    <svg class="w-3 h-3 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-1.447-.894L15 4m0 13V4m0 0L9 7"></path>
+                                                    </svg>
+                                                </div>
+                                                <div class="font-medium text-gray-900 group-hover:text-emerald-700 transition-colors duration-200" x-text="city"></div>
+                                            </div>
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
+                        </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Travel Date</label>
+                    <input type="date" x-model="travelDate" 
+                           class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all duration-300 bg-white/90 backdrop-blur-sm">
+            </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Travel Time</label>
+                    <input type="time" x-model="travelTime" 
+                           class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all duration-300 bg-white/90 backdrop-blur-sm">
+        </div>
+    </div>
+
+            <div class="mt-8 flex justify-center gap-4">
+                <button @click="planRoute()" :disabled="loading || !origin || !destination" 
+                        class="bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-600 hover:from-emerald-600 hover:via-teal-600 hover:to-cyan-700 disabled:opacity-50 text-white px-12 py-4 rounded-2xl font-bold transition-all duration-300 transform hover:scale-105 disabled:transform-none shadow-xl hover:shadow-2xl border border-emerald-400/20 text-lg">
+                    <span x-show="!loading" class="flex items-center gap-3">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-1.447-.894L15 4m0 13V4m0 0L9 7"></path>
+                        </svg>
+                        Plan Route
+                    </span>
+                    <span x-show="loading" class="flex items-center gap-3">
+                        <svg class="animate-spin h-6 w-6" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Planning Route...
+                    </span>
+                </button>
+                
+
+                        </div>
+                    </div>
+
+
+
+        <!-- Route Results -->
+        <div x-show="routeData" class="space-y-6">
+            <!-- Route Summary -->
+            <div class="bg-white/80 backdrop-blur-sm rounded-3xl shadow-xl border border-white/20 p-8">
+                <h3 class="text-2xl font-bold text-gray-900 mb-6">Route Summary</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <div class="text-center group">
+                        <div class="w-20 h-20 bg-gradient-to-br from-blue-100 to-indigo-200 rounded-3xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform duration-300 shadow-lg">
+                            <svg class="w-10 h-10 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                            </svg>
+                        </div>
+                        <h4 class="text-xl font-bold text-gray-900 mb-2" x-text="routeData.origin"></h4>
+                        <p class="text-gray-600 font-medium">Origin</p>
+                        </div>
+                    
+                    <div class="text-center group">
+                        <div class="w-20 h-20 bg-gradient-to-br from-emerald-100 to-teal-200 rounded-3xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform duration-300 shadow-lg">
+                            <svg class="w-10 h-10 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-1.447-.894L15 4m0 13V4m0 0L9 7"></path>
+                            </svg>
+                        </div>
+                        <h4 class="text-xl font-bold text-gray-900 mb-2" x-text="routeData.destination"></h4>
+                        <p class="text-gray-600 font-medium">Destination</p>
+                    </div>
+                    
+                    <div class="text-center group">
+                        <div class="w-20 h-20 bg-gradient-to-br from-purple-100 to-pink-200 rounded-3xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform duration-300 shadow-lg">
+                            <svg class="w-10 h-10 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                        </div>
+                        <h4 class="text-xl font-bold text-gray-900 mb-2" x-text="routeData.duration"></h4>
+                        <p class="text-gray-600 font-medium">Duration</p>
+                    </div>
+                    
+                    <div class="text-center group">
+                        <div class="w-20 h-20 bg-gradient-to-br from-orange-100 to-red-200 rounded-3xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform duration-300 shadow-lg">
+                            <svg class="w-10 h-10 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                            </svg>
+                        </div>
+                        <h4 class="text-xl font-bold text-gray-900 mb-2" x-text="routeData.distance || '--'"></h4>
+                        <p class="text-gray-600 font-medium">Distance</p>
+                    </div>
+                </div>
+                
+                <!-- Route Details -->
+                <div class="mt-6 p-4 bg-gradient-to-r from-gray-50 to-blue-50 rounded-2xl border border-gray-200">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h4 class="text-lg font-semibold text-gray-900">Transport Mode</h4>
+                            <p class="text-gray-600" x-text="routeData.transportMode || '--'"></p>
+                        </div>
+                        <div class="text-right">
+                            <h4 class="text-lg font-semibold text-gray-900">Route Details</h4>
+                            <p class="text-gray-600 text-sm" x-text="routeData.routeDetails || '--'"></p>
+                        </div>
+            </div>
+        </div>
+    </div>
+
+            <!-- Weather Conditions -->
+            <div class="bg-white/80 backdrop-blur-sm rounded-3xl shadow-xl border border-white/20 p-8">
+                <h3 class="text-2xl font-bold text-gray-900 mb-6">Weather Conditions Along Route</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div class="group">
+                        <h4 class="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+                            <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
+                            </svg>
+                            Origin Weather
+                        </h4>
+                        <div class="bg-gradient-to-br from-blue-50 to-indigo-100 rounded-2xl p-6 group-hover:shadow-lg transition-all duration-300 border border-blue-200/50">
+                            <div class="flex items-center justify-between mb-4">
+                                <div>
+                                    <p class="text-3xl font-bold text-blue-600" x-text="routeData.originWeather ? routeData.originWeather.temperature + '°C' : '--'"></p>
+                                    <p class="text-gray-700 font-medium" x-text="routeData.originWeather ? routeData.originWeather.description : '--'"></p>
+                                </div>
+                                <div class="text-right">
+                                    <p class="text-sm text-gray-600">Humidity: <span class="font-semibold" x-text="routeData.originWeather ? routeData.originWeather.humidity + '%' : '--'"></span></p>
+                                    <p class="text-sm text-gray-600">Wind: <span class="font-semibold" x-text="routeData.originWeather ? routeData.originWeather.wind_speed + ' m/s' : '--'"></span></p>
+                                </div>
+                </div>
+                            <div class="flex justify-center mt-4" x-show="routeData.originWeather && routeData.originWeather.description" x-html="renderWeatherIcon(routeData.originWeather.description, isNightBySunTimes(routeData.originWeather.sunrise, routeData.originWeather.sunset), 'w-16 h-16', '')"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="group">
+                        <h4 class="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+                            <svg class="w-6 h-6 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-1.447-.894L15 4m0 13V4m0 0L9 7"></path>
+                            </svg>
+                            Destination Weather
+                        </h4>
+                        <div class="bg-gradient-to-br from-emerald-50 to-teal-100 rounded-2xl p-6 group-hover:shadow-lg transition-all duration-300 border border-emerald-200/50">
+                            <div class="flex items-center justify-between mb-4">
+                                <div>
+                                    <p class="text-3xl font-bold text-emerald-600" x-text="routeData.destWeather ? routeData.destWeather.temperature + '°C' : '--'"></p>
+                                    <p class="text-gray-700 font-medium" x-text="routeData.destWeather ? routeData.destWeather.description : '--'"></p>
+                            </div>
+                                <div class="text-right">
+                                    <p class="text-sm text-gray-600">Humidity: <span class="font-semibold" x-text="routeData.destWeather ? routeData.destWeather.humidity + '%' : '--'"></span></p>
+                                    <p class="text-sm text-gray-600">Wind: <span class="font-semibold" x-text="routeData.destWeather ? routeData.destWeather.wind_speed + ' m/s' : '--'"></span></p>
+                                </div>
+                            </div>
+                            <div class="flex justify-center mt-4" x-show="routeData.destWeather && routeData.destWeather.description" x-html="renderWeatherIcon(routeData.destWeather.description, isNightBySunTimes(routeData.destWeather.sunrise, routeData.destWeather.sunset), 'w-16 h-16', '')"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+            <!-- Travel Recommendations -->
+            <div class="bg-white/80 backdrop-blur-sm rounded-3xl shadow-xl border border-white/20 p-8">
+                <h3 class="text-2xl font-bold text-gray-900 mb-6">Smart Travel Recommendations</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div class="bg-gradient-to-br from-yellow-50 to-amber-100 rounded-2xl p-6 border border-yellow-200/50">
+                        <h4 class="text-xl font-bold text-yellow-800 mb-4 flex items-center gap-2">
+                            <span class="text-2xl">⚠️</span>
+                            Weather Alerts
+                        </h4>
+                        <ul class="space-y-3 text-yellow-700">
+                            <template x-for="alert in routeData.alerts" :key="alert.type">
+                                <li class="flex items-start bg-white/60 rounded-lg p-3">
+                                    <span class="text-yellow-600 mr-3 text-lg">⚠️</span>
+                                    <span x-text="alert.message" class="font-medium"></span>
+                                </li>
+                            </template>
+                        </ul>
+                </div>
+                
+                    <div class="bg-gradient-to-br from-blue-50 to-indigo-100 rounded-2xl p-6 border border-blue-200/50">
+                        <h4 class="text-xl font-bold text-blue-800 mb-4 flex items-center gap-2">
+                            <span class="text-2xl">💡</span>
+                            Travel Tips
+                        </h4>
+                        <ul class="space-y-3 text-blue-700">
+                            <template x-for="tip in routeData.tips" :key="tip">
+                                <li class="flex items-start bg-white/60 rounded-lg p-3">
+                                    <span class="text-blue-600 mr-3 text-lg">💡</span>
+                                    <span x-text="tip" class="font-medium"></span>
+                                </li>
+                            </template>
+                        </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+        <!-- Popular Routes -->
+        <div class="bg-white/80 backdrop-blur-sm rounded-3xl shadow-xl border border-white/20 p-8 mt-8">
+            <h3 class="text-2xl font-bold text-gray-900 mb-6">Popular Routes</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div class="bg-gradient-to-br from-blue-50 to-indigo-100 rounded-2xl p-6 cursor-pointer hover:shadow-xl transition-all duration-300 transform hover:scale-105 border border-blue-200/50" @click="setRoute('London', 'Paris')">
+                    <div class="flex items-center justify-between mb-4">
+                        <h4 class="text-lg font-bold text-gray-900">London → Paris</h4>
+                        <span class="text-sm text-gray-600 bg-white/60 px-3 py-1 rounded-full">2h 15m</span>
+                    </div>
+                    <p class="text-gray-600 text-sm mb-4">Eurostar train or direct flight (344 km)</p>
+                    <div class="flex items-center text-sm text-gray-600 bg-white/60 rounded-lg p-2">
+                        <span>🌤️ 18°C</span>
+                        <span class="mx-2">→</span>
+                        <span>🌤️ 22°C</span>
+                </div>
+            </div>
+                
+                <div class="bg-gradient-to-br from-green-50 to-emerald-100 rounded-2xl p-6 cursor-pointer hover:shadow-xl transition-all duration-300 transform hover:scale-105 border border-green-200/50" @click="setRoute('Gujranwala', 'Lahore')">
+                    <div class="flex items-center justify-between mb-4">
+                        <h4 class="text-lg font-bold text-gray-900">Gujranwala → Lahore</h4>
+                        <span class="text-sm text-gray-600 bg-white/60 px-3 py-1 rounded-full">1h 45m</span>
+                    </div>
+                    <p class="text-gray-600 text-sm mb-4">Via GT Road, major highway route (75 km)</p>
+                    <div class="flex items-center text-sm text-gray-600 bg-white/60 rounded-lg p-2">
+                        <span>🌤️ 22°C</span>
+                        <span class="mx-2">→</span>
+                        <span>🌤️ 22°C</span>
+        </div>
+    </div>
+
+                <div class="bg-gradient-to-br from-purple-50 to-pink-100 rounded-2xl p-6 cursor-pointer hover:shadow-xl transition-all duration-300 transform hover:scale-105 border border-purple-200/50" @click="setRoute('Karachi', 'Lahore')">
+                    <div class="flex items-center justify-between mb-4">
+                        <h4 class="text-lg font-bold text-gray-900">Karachi → Lahore</h4>
+                        <span class="text-sm text-gray-600 bg-white/60 px-3 py-1 rounded-full">18h 30m</span>
+                    </div>
+                    <p class="text-gray-600 text-sm mb-4">Long-distance route via N-5 National Highway (1,250 km)</p>
+                    <div class="flex items-center text-sm text-gray-600 bg-white/60 rounded-lg p-2">
+                        <span>🌤️ 28°C</span>
+                        <span class="mx-2">→</span>
+                        <span>🌤️ 22°C</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Alpine.js data and methods
+document.addEventListener('alpine:init', () => {
+    Alpine.data('routePlanning', () => ({
+        origin: '',
+        destination: '',
+        travelDate: '',
+        travelTime: '',
+        routeData: null,
+        loading: false,
+        originSearchQuery: '',
+        destSearchQuery: '',
+        filteredOriginCities: [],
+        filteredDestCities: [],
+        cities: ['London', 'New York', 'Tokyo', 'Sydney', 'Dubai', 'Mumbai', 'Paris', 'Berlin', 'Moscow', 'Beijing', 'Delhi', 'Mexico City', 'São Paulo', 'Cairo', 'Lagos', 'Johannesburg', 'Nairobi', 'Casablanca', 'Algiers', 'Tunis', 'Tripoli', 'Khartoum', 'Addis Ababa', 'Dar es Salaam', 'Kinshasa', 'Luanda', 'Lusaka', 'Harare', 'Gaborone', 'Windhoek', 'Maputo', 'Antananarivo', 'Port Louis', 'Victoria', 'Moroni', 'Saint-Denis', 'Saint-Denis', 'Port-aux-Français', 'McMurdo Station', 'Vostok Station', 'Amundsen-Scott Station', 'Palmer Station', 'Rothera Station', 'Mawson Station', 'Davis Station', 'Casey Station', 'Dumont d\'Urville Station', 'Concordia Station', 'Halley Station', 'Neumayer Station', 'Troll Station', 'Svea Station', 'Wasa Station', 'Aboa Station', 'Maitri Station', 'Bharati Station', 'Dakshin Gangotri Station', 'Himadri Station', 'Indira Station', 'Maitri Station', 'Bharati Station', 'Dakshin Gangotri Station', 'Himadri Station', 'Indira Station', 'Lahore', 'Karachi', 'Islamabad', 'Multan', 'Faisalabad', 'Rawalpindi', 'Peshawar', 'Quetta', 'Gujranwala', 'Sialkot', 'Bahawalpur', 'Sargodha', 'Sukkur', 'Jhang', 'Sheikhupura', 'Rahim Yar Khan', 'Gujrat', 'Mardan', 'Kasur', 'Dera Ghazi Khan', 'Sahiwal', 'Nawabshah', 'Mirpur Khas', 'Okara'],
+        
+        // Delegate to global icon helper (with night support)
+        getWeatherIcon(condition, isNight = false) {
+            return window.getWeatherIcon(condition, !!isNight);
+        },
+        
+        async planRoute() {
+            if (!this.origin || !this.destination) return;
+            
+            this.loading = true;
+            try {
+                // Get weather data for both cities
+                const originWeather = await this.getWeatherData(this.origin);
+                const destWeather = await this.getWeatherData(this.destination);
+                
+                // Calculate realistic route data
+                const routeInfo = this.calculateRouteInfo(this.origin, this.destination);
+                
+                this.routeData = {
+                    origin: this.origin,
+                    destination: this.destination,
+                    duration: routeInfo.duration,
+                    distance: routeInfo.distance,
+                    transportMode: routeInfo.transportMode,
+                    originWeather: originWeather,
+                    destWeather: destWeather,
+                    alerts: this.generateWeatherAlerts(originWeather, destWeather),
+                    tips: this.generateTravelTips(originWeather, destWeather, routeInfo),
+                    routeDetails: routeInfo.details
+                };
+                
+
+            } catch (error) {
+                console.error('Error planning route:', error);
+            } finally {
+                this.loading = false;
+            }
+        },
+        
+        calculateRouteInfo(origin, destination) {
+            
+            // Realistic route calculations based on city pairs
+            const routeDatabase = {
+                'Lahore-Multan': {
+                    duration: '4h 30m',
+                    distance: '320 km',
+                    transportMode: 'Road',
+                    details: 'Via M-3 Motorway, typical driving route'
+                },
+                'Lahore-Islamabad': {
+                    duration: '3h 45m',
+                    distance: '280 km',
+                    transportMode: 'Road',
+                    details: 'Via M-2 Motorway, major highway route'
+                },
+                'Karachi-Lahore': {
+                    duration: '18h 30m',
+                    distance: '1,250 km',
+                    transportMode: 'Road',
+                    details: 'Long-distance route via N-5 National Highway'
+                },
+                'Multan-Karachi': {
+                    duration: '18h 45m',
+                    distance: '1,280 km',
+                    transportMode: 'Road',
+                    details: 'Long-distance route via N-5 National Highway'
+                },
+                'Karachi-Multan': {
+                    duration: '18h 45m',
+                    distance: '1,280 km',
+                    transportMode: 'Road',
+                    details: 'Long-distance route via N-5 National Highway'
+                },
+                'Gujranwala-Lahore': {
+                    duration: '1h 45m',
+                    distance: '75 km',
+                    transportMode: 'Road',
+                    details: 'Via GT Road, major highway route'
+                },
+                'Lahore-Gujranwala': {
+                    duration: '1h 45m',
+                    distance: '75 km',
+                    transportMode: 'Road',
+                    details: 'Via GT Road, major highway route'
+                },
+                'Islamabad-Rawalpindi': {
+                    duration: '0h 45m',
+                    distance: '25 km',
+                    transportMode: 'Road',
+                    details: 'Via Islamabad Highway, twin cities'
+                },
+                'Rawalpindi-Islamabad': {
+                    duration: '0h 45m',
+                    distance: '25 km',
+                    transportMode: 'Road',
+                    details: 'Via Islamabad Highway, twin cities'
+                },
+                'Faisalabad-Lahore': {
+                    duration: '2h 15m',
+                    distance: '120 km',
+                    transportMode: 'Road',
+                    details: 'Via M-3 Motorway'
+                },
+                'Lahore-Faisalabad': {
+                    duration: '2h 15m',
+                    distance: '120 km',
+                    transportMode: 'Road',
+                    details: 'Via M-3 Motorway'
+                },
+                'London-Paris': {
+                    duration: '2h 15m',
+                    distance: '344 km',
+                    transportMode: 'Air',
+                    details: 'Eurostar train or direct flight'
+                },
+                'New York-Tokyo': {
+                    duration: '14h 30m',
+                    distance: '10,850 km',
+                    transportMode: 'Air',
+                    details: 'Direct international flight'
+                },
+                'Sydney-Mumbai': {
+                    duration: '12h 45m',
+                    distance: '8,900 km',
+                    transportMode: 'Air',
+                    details: 'International flight with stopover'
+                }
+            };
+            
+            // Try to find exact match first
+            const exactKey = `${origin}-${destination}`;
+            
+            if (routeDatabase[exactKey]) {
+                return routeDatabase[exactKey];
+            }
+            
+            // Try reverse order
+            const reverseKey = `${destination}-${origin}`;
+            
+            if (routeDatabase[reverseKey]) {
+                const route = routeDatabase[reverseKey];
+                return {
+                    ...route,
+                    duration: route.duration,
+                    distance: route.distance
+                };
+            }
+            
+            // Calculate approximate values for unknown routes
+            const cities = [origin, destination];
+            const isInternational = this.isInternationalRoute(cities);
+            const baseDistance = this.estimateDistance(origin, destination);
+            
+            if (isInternational) {
+                return {
+                    duration: this.calculateFlightTime(baseDistance),
+                    distance: `${baseDistance} km`,
+                    transportMode: 'Air',
+                    details: 'International route - flight required'
+                };
+            } else {
+                return {
+                    duration: this.calculateDrivingTime(baseDistance),
+                    distance: `${baseDistance} km`,
+                    transportMode: 'Road',
+                    details: 'Estimated domestic route'
+                };
+            }
+        },
+        
+        isInternationalRoute(cities) {
+            // Check if route crosses country boundaries
+            const pakistaniCities = ['Lahore', 'Karachi', 'Islamabad', 'Multan', 'Faisalabad', 'Rawalpindi', 'Peshawar', 'Quetta', 'Gujranwala', 'Sialkot', 'Bahawalpur', 'Sargodha', 'Sukkur', 'Jhang', 'Sheikhupura', 'Rahim Yar Khan', 'Gujrat', 'Mardan', 'Kasur', 'Dera Ghazi Khan', 'Sahiwal', 'Nawabshah', 'Mirpur Khas', 'Okara'];
+            const internationalCities = ['London', 'Paris', 'New York', 'Tokyo', 'Sydney', 'Dubai', 'Mumbai', 'Berlin', 'Moscow', 'Beijing', 'Delhi', 'Bangalore', 'Hyderabad', 'Chennai', 'Kolkata', 'Ahmedabad', 'Pune', 'Jaipur', 'Surat', 'Lucknow', 'Kanpur', 'Nagpur', 'Indore', 'Thane', 'Bhopal', 'Patna', 'Vadodara', 'Ghaziabad', 'Ludhiana', 'Agra', 'Nashik', 'Faridabad', 'Meerut', 'Rajkot', 'Kalyan', 'Vasai', 'Varanasi', 'Srinagar', 'Aurangabad', 'Navi Mumbai', 'Solapur'];
+            
+            const hasPakistani = cities.some(city => pakistaniCities.includes(city));
+            const hasInternational = cities.some(city => internationalCities.includes(city));
+            
+            return hasPakistani && hasInternational;
+        },
+        
+        estimateDistance(origin, destination) {
+            // Rough distance estimation based on city coordinates
+            const cityCoordinates = {
+                'Lahore': { lat: 31.5204, lon: 74.3587 },
+                'Multan': { lat: 30.1575, lon: 71.5249 },
+                'Islamabad': { lat: 33.6844, lon: 73.0479 },
+                'Karachi': { lat: 24.8607, lon: 67.0011 },
+                'Gujranwala': { lat: 32.1877, lon: 74.1945 },
+                'Rawalpindi': { lat: 33.6007, lon: 73.0679 },
+                'Faisalabad': { lat: 31.4169, lon: 73.0892 },
+                'Peshawar': { lat: 34.0150, lon: 71.5249 },
+                'Quetta': { lat: 30.1798, lon: 66.9750 },
+                'Sialkot': { lat: 32.4924, lon: 74.5313 },
+                'Bahawalpur': { lat: 29.3955, lon: 71.6724 },
+                'Sargodha': { lat: 32.0836, lon: 72.6711 },
+                'Sukkur': { lat: 27.7032, lon: 68.8589 },
+                'Jhang': { lat: 31.2736, lon: 72.3287 },
+                'Sheikhupura': { lat: 31.7131, lon: 73.9783 },
+                'Rahim Yar Khan': { lat: 28.4204, lon: 70.2952 },
+                'Gujrat': { lat: 32.5740, lon: 74.0754 },
+                'Mardan': { lat: 34.1983, lon: 72.0230 },
+                'Kasur': { lat: 31.1155, lon: 74.4466 },
+                'Dera Ghazi Khan': { lat: 30.0500, lon: 70.6333 },
+                'Sahiwal': { lat: 30.6667, lon: 73.1000 },
+                'Nawabshah': { lat: 26.2500, lon: 68.4167 },
+                'Mirpur Khas': { lat: 25.5276, lon: 69.0126 },
+                'Okara': { lat: 30.8100, lon: 73.4500 },
+                'London': { lat: 51.5074, lon: -0.1278 },
+                'Paris': { lat: 48.8566, lon: 2.3522 },
+                'New York': { lat: 40.7128, lon: -74.0060 },
+                'Tokyo': { lat: 35.6762, lon: 139.6503 },
+                'Mumbai': { lat: 19.0760, lon: 72.8777 },
+                'Delhi': { lat: 28.7041, lon: 77.1025 },
+                'Dubai': { lat: 25.2048, lon: 55.2708 },
+                'Berlin': { lat: 52.5200, lon: 13.4050 },
+                'Moscow': { lat: 55.7558, lon: 37.6176 },
+                'Beijing': { lat: 39.9042, lon: 116.4074 },
+                'Sydney': { lat: -33.8688, lon: 151.2093 }
+            };
+            
+            const originCoords = cityCoordinates[origin];
+            const destCoords = cityCoordinates[destination];
+            
+            if (originCoords && destCoords) {
+                return Math.round(this.calculateHaversineDistance(originCoords, destCoords));
+            }
+            
+            // Fallback estimation
+            return Math.round(Math.random() * 500 + 100);
+        },
+        
+        calculateHaversineDistance(coord1, coord2) {
+            const R = 6371; // Earth's radius in km
+            const dLat = this.toRadians(coord2.lat - coord1.lat);
+            const dLon = this.toRadians(coord2.lon - coord1.lon);
+
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                     Math.cos(this.toRadians(coord1.lat)) * Math.cos(this.toRadians(coord2.lat)) *
+                     Math.sin(dLon/2) * Math.sin(dLon/2);
+
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            return R * c;
+        },
+        
+        toRadians(degrees) {
+            return degrees * (Math.PI/180);
+        },
+        
+        calculateDrivingTime(distance) {
+            // Realistic driving time: 60-80 km/h average
+            const avgSpeed = 65; // km/h
+            const hours = distance / avgSpeed;
+            const hoursInt = Math.floor(hours);
+            const minutes = Math.round((hours - hoursInt) * 60);
+
+            if (hoursInt === 0) {
+                return `${minutes}m`;
+            } else if (minutes === 0) {
+                return `${hoursInt}h`;
+            } else {
+                return `${hoursInt}h ${minutes}m`;
+            }
+        },
+        
+        calculateFlightTime(distance) {
+            // Realistic flight time: 800-900 km/h average
+            const avgSpeed = 850; // km/h
+            const hours = distance / avgSpeed;
+            const hoursInt = Math.floor(hours);
+            const minutes = Math.round((hours - hoursInt) * 60);
+
+            if (hoursInt === 0) {
+                return `${minutes}m`;
+            } else if (minutes === 0) {
+                return `${hoursInt}h`;
+            } else {
+                return `${hoursInt}h ${minutes}m`;
+            }
+        },
+        
+        generateWeatherAlerts(originWeather, destWeather) {
+            const alerts = [];
+
+            if (originWeather) {
+                if (originWeather.temperature > 35) {
+                    alerts.push({ type: 'heat', message: `High temperature alert in ${this.origin}: ${originWeather.temperature}°C` });
+                }
+                if (originWeather.wind_speed > 10) {
+                    alerts.push({ type: 'wind', message: `Strong winds in ${this.origin}: ${originWeather.wind_speed} m/s` });
+                }
+            }
+
+            if (destWeather) {
+                if (destWeather.temperature > 35) {
+                    alerts.push({ type: 'heat', message: `High temperature alert in ${this.destination}: ${destWeather.temperature}°C` });
+                }
+                if (destWeather.wind_speed > 10) {
+                    alerts.push({ type: 'wind', message: `Strong winds in ${this.destination}: ${destWeather.wind_speed} m/s` });
+                }
+            }
+
+            // Add route-specific alerts
+            if (originWeather && destWeather) {
+                const tempDiff = Math.abs(originWeather.temperature - destWeather.temperature);
+                if (tempDiff > 15) {
+                    alerts.push({ type: 'temperature', message: `Large temperature difference: ${tempDiff}°C between cities` });
+                }
+            }
+
+            return alerts.length > 0 ? alerts : [
+                { type: 'info', message: 'Weather conditions are favorable for travel' }
+            ];
+        },
+        
+        generateTravelTips(originWeather, destWeather, routeInfo) {
+            const tips = [];
+
+            if (routeInfo.transportMode === 'Air') {
+                tips.push('Check flight status before departure');
+                tips.push('Arrive at airport 2-3 hours before international flights');
+                tips.push('Pack weather-appropriate clothing for destination');
+            } else {
+                tips.push('Check road conditions and traffic updates');
+                tips.push('Plan rest stops every 2-3 hours for long drives');
+                tips.push('Keep emergency supplies in vehicle');
+            }
+
+            if (originWeather && destWeather) {
+                const tempDiff = Math.abs(originWeather.temperature - destWeather.temperature);
+                if (tempDiff > 10) {
+                    tips.push(`Pack for ${tempDiff}°C temperature change`);
+                }
+
+                if (destWeather.humidity > 80) {
+                    tips.push('High humidity expected at destination');
+                }
+
+                if (destWeather.wind_speed > 8) {
+                    tips.push('Windy conditions expected at destination');
+                }
+            }
+
+            return tips;
+        },
+        
+        async getWeatherData(city) {
+            try {
+                const response = await fetch(`/api/current-weather/?city=${city}`);
+                const data = await response.json();
+                return data.error ? null : data;
+            } catch (error) {
+                console.error('Error fetching weather:', error);
+                return null;
+            }
+        },
+        
+        setRoute(origin, destination) {
+            this.origin = origin;
+            this.destination = destination;
+            this.planRoute();
+        },
+        
+        searchOriginCities() {
+            if (!this.origin.trim()) {
+                this.filteredOriginCities = [];
+                return;
+            }
+            
+            const query = this.origin.toLowerCase();
+            this.filteredOriginCities = this.cities.filter(city => 
+                city.toLowerCase().includes(query)
+            );
+            
+
+        },
+        
+        searchDestCities() {
+            if (!this.destination.trim()) {
+                this.filteredDestCities = [];
+                return;
+            }
+            
+            const query = this.destination.toLowerCase();
+            this.filteredDestCities = this.cities.filter(city => 
+                city.toLowerCase().includes(query)
+            );
+            
+
+        },
+        
+        selectOriginCity(city) {
+            this.origin = city;
+            this.originSearchQuery = city;
+            this.filteredOriginCities = [];
+        },
+        
+        selectDestCity(city) {
+            this.destination = city;
+            this.destSearchQuery = city;
+            this.filteredDestCities = [];
+        },
+        
+        init() {
+            // Set default date to tomorrow
+            const tomorrow = new Date();
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            this.travelDate = tomorrow.toISOString().split('T')[0];
+            
+            // Set default time to current time + 1 hour
+            const now = new Date();
+            now.setHours(now.getHours() + 1);
+            this.travelTime = now.toTimeString().slice(0, 5);
+            
+
+        }
+    }));
+});
+</script>
+{% endblock %}
+

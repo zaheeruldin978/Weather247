@@ -1,0 +1,1367 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Compare Cities - Weather-247{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gray-50" x-data="cityComparison" x-init="init()" x-cloak>
+    <!-- Loading Overlay -->
+    <div x-show="loading" class="fixed inset-0 bg-white bg-opacity-90 flex items-center justify-center z-50">
+        <div class="text-center">
+            <div class="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p class="text-lg text-gray-600">Loading weather data...</p>
+        </div>
+    </div>
+    
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Page Header -->
+        <div class="mb-8">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-4">
+                    <div class="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-teal-500 via-cyan-500 to-blue-600 rounded-2xl shadow-xl border border-teal-400/20 hover:shadow-2xl transition-all duration-300 transform hover:scale-105">
+                        <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                        </svg>
+                    </div>
+                    <div>
+                        <h1 class="text-3xl font-bold text-gray-900">Compare Cities</h1>
+                        <p class="text-gray-600 mt-1">Compare weather conditions across multiple cities</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- City Selection -->
+        <div class="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 mb-8">
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">Select Cities to Compare</h3>
+            
+            <!-- Search for cities to add -->
+            <div class="mb-8">
+                <label class="block text-sm font-medium text-gray-700 mb-3">Search for cities to add</label>
+                <div class="relative">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                                                        <div class="w-6 h-6 bg-gradient-to-br from-teal-500 to-cyan-600 rounded-lg flex items-center justify-center">
+                            <svg class="h-3.5 w-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                        </svg>
+                        </div>
+                </div>
+                    <input type="text" 
+                           x-model="searchQuery" 
+                           @input="searchCities()"
+                           @keydown.enter.prevent="selectCityFromText()"
+                           @focus="searchCities()"
+                           placeholder="Type to search for any city..." 
+                           class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200">
+                    
+                    <!-- Search Results Dropdown -->
+                    <div x-show="searchResults.length > 0 || (searchQuery && searchQuery.trim().length > 1)" 
+                         x-transition 
+                         @click.away="searchResults = []"
+                         class="absolute z-50 w-full mt-2 bg-white border border-gray-200 rounded-xl shadow-lg max-h-60 overflow-y-auto">
+                        <template x-for="(city, idx) in searchResults" :key="city + '-' + idx">
+                            <div @click="selectCityFromSearch(city)" 
+                                 class="px-4 py-3 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-b-0 transition-colors">
+                                <div class="font-medium text-gray-900" x-text="city"></div>
+                </div>
+                        </template>
+                        <div x-show="searchResults.length === 0 && searchQuery && searchQuery.trim().length > 1"
+                             @click="selectCityFromText()"
+                             class="px-4 py-3 hover:bg-blue-50 cursor-pointer">
+                            <span class="text-gray-700">Search for </span>
+                            <span class="font-semibold text-gray-900" x-text="'\'' + searchQuery.trim() + '\''"></span>
+                        </div>
+            </div>
+        </div>
+    </div>
+
+            <!-- City Selection Components -->
+            <div class="mb-8">
+                <label class="block text-base font-semibold text-gray-800 mb-4">Selected Cities</label>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <template x-for="(city, index) in selectedCities" :key="index">
+                        <div class="flex items-center gap-3">
+                            <div class="flex-1 relative">
+                                <div x-data="{ open: false, filter: '' }" class="relative">
+                                    <button type="button" @click="open = !open" class="w-full px-4 py-3 border border-gray-300 rounded-xl text-left focus:ring-2 focus:ring-blue-500 focus:border-transparent flex items-center justify-between bg-white hover:bg-gray-50 transition-colors">
+                                        <span class="font-medium text-gray-900" x-text="city || 'Select City'"></span>
+                                        <div class="w-5 h-5 bg-gradient-to-br from-gray-400 to-gray-500 rounded-md flex items-center justify-center ml-2">
+                                            <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                                            </svg>
+                                        </div>
+                                    </button>
+                                    <div x-show="open" x-transition @click.away="open = false" class="absolute z-50 mt-1 w-full bg-white border border-gray-200 rounded-xl shadow-lg max-h-60 overflow-y-auto">
+                                        <div class="p-2 border-b border-gray-100">
+                                            <input type="text" x-model="filter" placeholder="Filter cities..." class="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                                        </div>
+                                        <template x-for="(cityName, idx) in availableCities.filter(c => !filter || c.toLowerCase().includes(filter.toLowerCase()))" :key="cityName + '-' + idx">
+                                            <div @click="selectedCities[index] = cityName; open = false; loadComparisonData();" class="px-4 py-2 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-b-0 transition-colors" x-text="cityName"></div>
+                                </template>
+                                    </div>
+                                </div>
+                            </div>
+                            <button @click="removeCity(index)" class="px-3 py-3 bg-gradient-to-r from-red-100 via-red-200 to-red-300 hover:from-red-200 hover:via-red-300 hover:to-red-400 text-red-600 rounded-xl transition-all duration-300 transform hover:scale-105 shadow-sm hover:shadow-md border border-red-200/50 flex-shrink-0">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                </svg>
+                            </button>
+                        </div>
+                    </template>
+                </div>
+            </div>
+            <!-- Action Buttons -->
+            <div class="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+                <button @click="addCity()" x-show="selectedCities.length < 5" class="bg-gradient-to-r from-teal-600 to-cyan-600 hover:from-teal-700 hover:to-cyan-700 text-white px-6 py-3 rounded-xl transition-all duration-200 transform hover:scale-105 shadow-md hover:shadow-lg font-medium">
+                    <svg class="w-5 h-5 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                        </svg>
+                        Add City
+                    </button>
+                <button @click="loadComparisonData()" :disabled="loading" class="bg-gradient-to-r from-teal-600 to-cyan-600 hover:from-teal-700 hover:to-cyan-700 disabled:opacity-50 text-white px-8 py-3 rounded-xl transition-all duration-200 transform hover:scale-105 shadow-md hover:shadow-lg font-medium">
+                    <span x-show="!loading" class="flex items-center gap-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                        </svg>
+                        Compare Now
+                    </span>
+                        <span x-show="loading" class="flex items-center gap-2">
+                        <svg class="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            Loading...
+                        </span>
+                    </button>
+        </div>
+    </div>
+
+        <!-- Weather Comparison Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-8" x-show="Object.keys(weatherData).length > 0">
+            <template x-for="city in selectedCities" :key="city">
+                <div class="bg-white rounded-2xl shadow-lg overflow-hidden card-hover border border-gray-100">
+                    <!-- Loading State for City -->
+                    <div x-show="isCityLoading(city)" class="p-6 text-center">
+                        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                        <p class="text-gray-600">Loading weather for <span class="font-semibold" x-text="city"></span>...</p>
+                    </div>
+                    
+                    <!-- Weather Data Display -->
+                    <div x-show="!isCityLoading(city) && weatherData[city]" :class="getWeatherCardBackground(city)" class="p-6 text-white transition-all duration-500">
+                        <div class="text-center">
+                            <!-- Day/Night Indicator -->
+                            <div class="flex justify-center items-center gap-2 mb-2" x-show="weatherData[city] && weatherData[city].sunrise && weatherData[city].sunset">
+                                <span class="text-xs px-2 py-1 rounded-full" 
+                                      :class="isCurrentlyNightForCity(city) ? 'bg-purple-800 text-purple-100' : 'bg-blue-800 text-blue-100'"
+                                      x-text="isCurrentlyNightForCity(city) ? '🌙 Night' : '☀️ Day'">
+                                </span>
+                            </div>
+                            <h3 class="text-xl font-bold mb-2" x-text="city ? city.charAt(0).toUpperCase() + city.slice(1).toLowerCase() : '--'"></h3>
+                            <p class="text-blue-100 mb-4" x-text="weatherData[city] ? weatherData[city].country : ''"></p>
+                            <div class="text-4xl font-bold mb-2" x-text="weatherData[city] ? weatherData[city].temperature + '°C' : '--'"></div>
+                            <p class="text-blue-100" x-text="weatherData[city] ? weatherData[city].description : '--'"></p>
+                            <div x-show="weatherData[city] && weatherData[city].description"
+                                 x-html="renderWeatherIcon(weatherData[city].description, isCurrentlyNightForCity(city), 'w-20 h-20', '')"
+                                 class="mt-3 mx-auto"></div>
+        </div>
+    </div>
+
+                    <!-- Weather Details -->
+                    <div x-show="!isCityLoading(city) && weatherData[city]" class="p-6 bg-white">
+                        <div class="space-y-4">
+                            <div class="flex justify-between items-center">
+                                <span class="text-gray-600">Feels Like</span>
+                                <span class="font-semibold text-gray-900" x-text="weatherData[city] ? weatherData[city].feels_like + '°C' : '--'"></span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-gray-600">Humidity</span>
+                                <span class="font-semibold text-gray-900" x-text="weatherData[city] ? weatherData[city].humidity + '%' : '--'"></span>
+                        </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-gray-600">Wind Speed</span>
+                                <span class="font-semibold text-gray-900" x-text="weatherData[city] ? weatherData[city].wind_speed + ' m/s' : '--'"></span>
+            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-gray-600">Pressure</span>
+                                <span class="font-semibold text-gray-900" x-text="weatherData[city] ? weatherData[city].pressure + ' hPa' : '--'"></span>
+        </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-gray-600">Air Quality</span>
+                                <span class="font-semibold text-gray-900" x-text="weatherData[city] ? weatherData[city].aqi : '--'"></span>
+            </div>
+        </div>
+        </div>
+    </div>
+            </template>
+    </div>
+
+        <!-- Comparison Charts -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8 mt-8" x-show="Object.keys(weatherData).length > 0">
+            <!-- Temperature Comparison Chart -->
+            <div class="bg-gradient-to-br from-white via-blue-50/30 to-white rounded-3xl shadow-xl p-8 border border-blue-100/50 hover:shadow-2xl transition-all duration-500 transform hover:scale-[1.01] relative overflow-hidden">
+                <!-- Background Pattern -->
+                <div class="absolute inset-0 opacity-5">
+                    <div class="absolute top-4 right-4 w-32 h-32 bg-blue-400 rounded-full"></div>
+                    <div class="absolute bottom-4 left-4 w-24 h-24 bg-indigo-400 rounded-full"></div>
+                    <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-16 h-16 bg-blue-300 rounded-full"></div>
+                </div>
+                
+                <div class="relative z-10">
+                    <div class="flex items-center justify-between mb-8">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 bg-gradient-to-br from-red-500 to-orange-600 rounded-2xl flex items-center justify-center shadow-lg">
+                                <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                            </div>
+                            <div>
+                                <h3 class="text-xl font-bold text-gray-900">Temperature Comparison</h3>
+                                <p class="text-gray-600 text-sm">Real-time temperature data</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-red-100 to-orange-100 rounded-xl border border-red-200/50">
+                            <div class="w-2.5 h-2.5 bg-gradient-to-r from-red-500 to-orange-600 rounded-full animate-pulse"></div>
+                            <span class="text-xs font-semibold text-red-700">°C</span>
+                        </div>
+                    </div>
+                    <div class="h-72 relative">
+                    <canvas id="temperatureComparisonChart"></canvas>
+                    </div>
+            </div>
+        </div>
+
+            <!-- Humidity Comparison Chart -->
+            <div class="bg-gradient-to-br from-white via-emerald-50/30 to-white rounded-3xl shadow-xl p-8 border border-emerald-100/50 hover:shadow-2xl transition-all duration-500 transform hover:scale-[1.01] relative overflow-hidden">
+                <!-- Background Pattern -->
+                <div class="absolute inset-0 opacity-5">
+                    <div class="absolute top-4 right-4 w-32 h-32 bg-emerald-400 rounded-full"></div>
+                    <div class="absolute bottom-4 left-4 w-24 h-24 bg-teal-400 rounded-full"></div>
+                    <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-16 h-16 bg-emerald-300 rounded-full"></div>
+                </div>
+                
+                <div class="relative z-10">
+                    <div class="flex items-center justify-between mb-8">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl flex items-center justify-center shadow-lg">
+                                <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z"></path>
+                                </svg>
+                            </div>
+                            <div>
+                                <h3 class="text-xl font-bold text-gray-900">Humidity Comparison</h3>
+                                <p class="text-gray-600 text-sm">Moisture levels across cities</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-emerald-100 to-teal-100 rounded-xl border border-emerald-200/50">
+                            <div class="w-2.5 h-2.5 bg-gradient-to-r from-emerald-500 to-teal-600 rounded-full animate-pulse"></div>
+                            <span class="text-xs font-semibold text-emerald-700">%</span>
+                        </div>
+                    </div>
+                    <div class="h-72 relative">
+                    <canvas id="humidityComparisonChart"></canvas>
+                    </div>
+            </div>
+        </div>
+    </div>
+
+        <!-- Weather Insights Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-8 mt-8" x-show="Object.keys(weatherData).length > 0">
+            <!-- Temperature Range Card -->
+            <div class="bg-gradient-to-br from-blue-100 to-indigo-200 rounded-2xl p-6 border border-blue-200 hover:shadow-lg transition-all duration-300 transform hover:scale-105 shadow-md">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="w-12 h-12 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-xl flex items-center justify-center shadow-lg">
+                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                    </div>
+                    <span class="text-2xl font-bold text-blue-700" x-text="getTemperatureRange()"></span>
+                </div>
+                <h4 class="text-lg font-semibold text-gray-800 mb-2">Temperature Range</h4>
+                <p class="text-gray-700 text-sm">Difference between highest and lowest temperatures</p>
+            </div>
+
+            <!-- Humidity Average Card -->
+            <div class="bg-gradient-to-br from-emerald-100 to-teal-200 rounded-2xl p-6 border border-emerald-200 hover:shadow-lg transition-all duration-300 transform hover:scale-105 shadow-md">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="w-12 h-12 bg-gradient-to-br from-emerald-600 to-teal-700 rounded-xl flex items-center justify-center shadow-lg">
+                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z"></path>
+                        </svg>
+                    </div>
+                    <span class="text-2xl font-bold text-emerald-700" x-text="getHumidityAverage()"></span>
+                </div>
+                <h4 class="text-lg font-semibold text-gray-800 mb-2">Average Humidity</h4>
+                <p class="text-gray-700 text-sm">Mean humidity across all cities</p>
+            </div>
+
+            <!-- Wind Speed Card -->
+            <div class="bg-gradient-to-br from-purple-100 to-pink-200 rounded-2xl p-6 border border-purple-200 hover:shadow-lg transition-all duration-300 transform hover:scale-105 shadow-md">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="w-12 h-12 bg-gradient-to-br from-purple-600 to-pink-700 rounded-xl flex items-center justify-center shadow-lg">
+                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h1m4 0h1m-6 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                    </div>
+                    <span class="text-2xl font-bold text-purple-700" x-text="getWindSpeedAverage()"></span>
+                </div>
+                <h4 class="text-lg font-semibold text-gray-800 mb-2">Avg Wind Speed</h4>
+                <p class="text-gray-700 text-sm">Mean wind speed across all cities</p>
+            </div>
+
+            <!-- Air Quality Card -->
+            <div class="bg-gradient-to-br from-orange-100 to-red-200 rounded-2xl p-6 border border-orange-200 hover:shadow-lg transition-all duration-300 transform hover:scale-105 shadow-md">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="w-12 h-12 bg-gradient-to-br from-orange-600 to-red-700 rounded-xl flex items-center justify-center shadow-lg">
+                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z"></path>
+                        </svg>
+                    </div>
+                    <span class="text-2xl font-bold text-orange-700" x-text="getAirQualityAverage()"></span>
+                </div>
+                <h4 class="text-lg font-semibold text-gray-800 mb-2">Avg Air Quality</h4>
+                <p class="text-gray-700 text-sm">Mean AQI across all cities</p>
+        </div>
+    </div>
+
+        <!-- Detailed Metrics Table -->
+        <div class="bg-white rounded-2xl shadow-lg overflow-hidden border border-gray-100 mt-8" x-show="Object.keys(weatherData).length > 0">
+            <div class="px-6 py-6 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-gray-100">
+                <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center">
+                        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                        </svg>
+                    </div>
+                    <h3 class="text-xl font-bold text-gray-900">Detailed Weather Metrics</h3>
+                </div>
+                <p class="text-gray-600 mt-1">Comprehensive comparison of weather parameters across cities</p>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gradient-to-r from-blue-50 to-indigo-50">
+                        <tr>
+                            <th class="px-6 py-4 text-left text-sm font-semibold text-gray-700 uppercase tracking-wider">Metric</th>
+                            <template x-for="city in selectedCities" :key="city">
+                                <th class="px-6 py-4 text-left text-sm font-semibold text-gray-700 uppercase tracking-wider">
+                                    <div class="flex items-center gap-2">
+                                        <div class="w-2 h-2 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full"></div>
+                                        <span x-text="city"></span>
+                                    </div>
+                                </th>
+                            </template>
+                            </tr>
+                        </thead>
+                    <tbody class="bg-white divide-y divide-gray-100">
+                        <tr class="hover:bg-blue-50 transition-colors duration-200">
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-8 h-8 bg-gradient-to-br from-red-100 to-red-200 rounded-lg flex items-center justify-center">
+                                        <svg class="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                        </svg>
+                                    </div>
+                                    <span class="text-sm font-medium text-gray-900">Temperature (°C)</span>
+                                </div>
+                            </td>
+                            <template x-for="city in selectedCities" :key="city">
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="flex items-center gap-2">
+                                        <span class="text-lg font-bold text-gray-900" x-text="weatherData[city] ? weatherData[city].temperature + '°C' : '--'"></span>
+                                        <div class="w-16 h-2 bg-gray-200 rounded-full overflow-hidden">
+                                            <div class="h-full bg-gradient-to-r from-red-400 to-red-600 rounded-full" 
+                                                 :style="`width: ${weatherData[city] ? Math.min((weatherData[city].temperature / 40) * 100, 100) : 0}%`"></div>
+                                        </div>
+                                    </div>
+                                </td>
+                            </template>
+                        </tr>
+                        <tr class="hover:bg-blue-50 transition-colors duration-200">
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-8 h-8 bg-gradient-to-br from-orange-100 to-orange-200 rounded-lg flex items-center justify-center">
+                                        <svg class="w-4 h-4 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                        </svg>
+                                    </div>
+                                    <span class="text-sm font-medium text-gray-900">Feels Like (°C)</span>
+                                </div>
+                            </td>
+                            <template x-for="city in selectedCities" :key="city">
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="flex items-center gap-2">
+                                        <span class="text-lg font-bold text-gray-900" x-text="weatherData[city] ? weatherData[city].feels_like + '°C' : '--'"></span>
+                                        <div class="w-16 h-2 bg-gray-200 rounded-full overflow-hidden">
+                                            <div class="h-full bg-gradient-to-r from-orange-400 to-orange-600 rounded-full" 
+                                                 :style="`width: ${weatherData[city] ? Math.min((weatherData[city].feels_like / 40) * 100, 100) : 0}%`"></div>
+                                        </div>
+                                    </div>
+                                </td>
+                            </template>
+                        </tr>
+                        <tr class="hover:bg-blue-50 transition-colors duration-200">
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-8 h-8 bg-gradient-to-br from-blue-100 to-blue-200 rounded-lg flex items-center justify-center">
+                                        <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z"></path>
+                                        </svg>
+                                    </div>
+                                    <span class="text-sm font-medium text-gray-900">Humidity (%)</span>
+                                </div>
+                            </td>
+                            <template x-for="city in selectedCities" :key="city">
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="flex items-center gap-2">
+                                        <span class="text-lg font-bold text-gray-900" x-text="weatherData[city] ? weatherData[city].humidity + '%' : '--'"></span>
+                                        <div class="w-16 h-2 bg-gray-200 rounded-full overflow-hidden">
+                                            <div class="h-full bg-gradient-to-r from-blue-400 to-blue-600 rounded-full" 
+                                                 :style="`width: ${weatherData[city] ? weatherData[city].humidity : 0}%`"></div>
+                                        </div>
+                                    </div>
+                                </td>
+                            </template>
+                        </tr>
+                        <tr class="hover:bg-blue-50 transition-colors duration-200">
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-8 h-8 bg-gradient-to-br from-green-100 to-green-200 rounded-lg flex items-center justify-center">
+                                        <svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h1m4 0h1m-6 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                        </svg>
+                                    </div>
+                                    <span class="text-sm font-medium text-gray-900">Wind Speed (m/s)</span>
+                                </div>
+                            </td>
+                            <template x-for="city in selectedCities" :key="city">
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="flex items-center gap-2">
+                                        <span class="text-lg font-bold text-gray-900" x-text="weatherData[city] ? weatherData[city].wind_speed + ' m/s' : '--'"></span>
+                                        <div class="w-16 h-2 bg-gray-200 rounded-full overflow-hidden">
+                                            <div class="h-full bg-gradient-to-r from-green-400 to-green-600 rounded-full" 
+                                                 :style="`width: ${weatherData[city] ? Math.min((weatherData[city].wind_speed / 20) * 100, 100) : 0}%`"></div>
+                                        </div>
+                                    </div>
+                                </td>
+                            </template>
+                        </tr>
+                        <tr class="hover:bg-blue-50 transition-colors duration-200">
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-8 h-8 bg-gradient-to-br from-purple-100 to-purple-200 rounded-lg flex items-center justify-center">
+                                        <svg class="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
+                                        </svg>
+                                    </div>
+                                    <span class="text-sm font-medium text-gray-900">Pressure (hPa)</span>
+                                </div>
+                            </td>
+                            <template x-for="city in selectedCities" :key="city">
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="flex items-center gap-2">
+                                        <span class="text-lg font-bold text-gray-900" x-text="weatherData[city] ? weatherData[city].pressure + ' hPa' : '--'"></span>
+                                        <div class="w-16 h-2 bg-gray-200 rounded-full overflow-hidden">
+                                            <div class="h-full bg-gradient-to-r from-purple-400 to-purple-600 rounded-full" 
+                                                 :style="`width: ${weatherData[city] ? Math.min(((weatherData[city].pressure - 900) / 200) * 100, 100) : 0}%`"></div>
+                                        </div>
+                                    </div>
+                                </td>
+                            </template>
+                        </tr>
+                        <tr class="hover:bg-blue-50 transition-colors duration-200">
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-8 h-8 bg-gradient-to-br from-yellow-100 to-yellow-200 rounded-lg flex items-center justify-center">
+                                        <svg class="w-4 h-4 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z"></path>
+                                        </svg>
+                                    </div>
+                                    <span class="text-sm font-medium text-gray-900">Air Quality Index</span>
+                                </div>
+                            </td>
+                            <template x-for="city in selectedCities" :key="city">
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="flex items-center gap-2">
+                                        <span class="text-lg font-bold text-gray-900" x-text="weatherData[city] ? weatherData[city].aqi : '--'"></span>
+                                        <div class="w-16 h-2 bg-gray-200 rounded-full overflow-hidden">
+                                            <div class="h-full rounded-full" 
+                                                 :class="getAQIColorClass(weatherData[city] ? weatherData[city].aqi : 0)"
+                                                 :style="`width: ${weatherData[city] ? Math.min((weatherData[city].aqi / 5) * 100, 100) : 0}%`"></div>
+                                        </div>
+                                    </div>
+                                </td>
+                            </template>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        <!-- Quick Actions Section -->
+        <div class="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 mb-8 mt-8">
+            <h3 class="text-lg font-semibold text-gray-900 mb-6">Quick Actions</h3>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <!-- Dashboard -->
+                <a href="/dashboard/" class="group">
+                    <div class="bg-gradient-to-br from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100 rounded-xl p-4 text-center transition-all duration-300 transform hover:scale-105 border border-blue-100 hover:border-blue-200">
+                        <div class="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center mx-auto mb-3 group-hover:shadow-lg transition-all duration-300">
+                            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z"></path>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5a2 2 0 012-2h4a2 2 0 012 2v2H8V5z"></path>
+                    </svg>
+                        </div>
+                        <span class="text-sm font-semibold text-blue-700 group-hover:text-blue-800 transition-colors">Dashboard</span>
+                    </div>
+                </a>
+
+                <!-- AI Forecast -->
+                <a href="/forecast/" class="group">
+                    <div class="bg-gradient-to-br from-purple-50 to-pink-50 hover:from-purple-100 hover:to-pink-100 rounded-xl p-4 text-center transition-all duration-300 transform hover:scale-105 border border-purple-100 hover:border-purple-200">
+                        <div class="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl flex items-center justify-center mx-auto mb-3 group-hover:shadow-lg transition-all duration-300">
+                            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path>
+                    </svg>
+                        </div>
+                        <span class="text-sm font-semibold text-purple-700 group-hover:text-purple-800 transition-colors">AI Forecast</span>
+                    </div>
+                </a>
+
+                <!-- Weather Alerts -->
+                <a href="/alerts/" class="group">
+                    <div class="bg-gradient-to-br from-red-50 to-orange-50 hover:from-red-100 hover:to-orange-100 rounded-xl p-4 text-center transition-all duration-300 transform hover:scale-105 border border-red-100 hover:border-red-200">
+                        <div class="w-12 h-12 bg-gradient-to-br from-red-500 to-orange-600 rounded-xl flex items-center justify-center mx-auto mb-3 group-hover:shadow-lg transition-all duration-300">
+                            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+                    </svg>
+                        </div>
+                        <span class="text-sm font-semibold text-red-700 group-hover:text-red-800 transition-colors">Weather Alerts</span>
+                    </div>
+                </a>
+
+                                 <!-- Route Planning -->
+                 <a href="/route/" class="group">
+                     <div class="bg-gradient-to-br from-green-50 to-emerald-50 hover:from-green-100 hover:to-emerald-100 rounded-xl p-4 text-center transition-all duration-300 transform hover:scale-105 border border-green-100 hover:border-green-200">
+                         <div class="w-12 h-12 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl flex items-center justify-center mx-auto mb-3 group-hover:shadow-lg transition-all duration-300">
+                             <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-1.447-.894L15 4m0 13V4m0 0L9 7"></path>
+                    </svg>
+                         </div>
+                         <span class="text-sm font-semibold text-green-700 group-hover:text-green-800 transition-colors">Route Planning</span>
+                     </div>
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Alpine.js data and methods
+document.addEventListener('alpine:init', () => {
+    Alpine.data('cityComparison', () => ({
+        selectedCities: ['Karachi', 'Lahore'],
+        availableCities: [
+            // Pakistan (top priority)
+            'Karachi', 'Lahore', 'Islamabad', 'Rawalpindi', 'Faisalabad', 'Multan', 'Peshawar', 'Quetta', 'Gujranwala', 'Sialkot', 'Hyderabad', 'Sukkur', 'Bahawalpur', 'Sargodha', 'Mardan', 'Abbottabad', 'Gujrat', 'Sheikhupura', 'Okara', 'Rahim Yar Khan',
+            // Middle East & South Asia
+            'Dubai', 'Abu Dhabi', 'Sharjah', 'Doha', 'Riyadh', 'Jeddah', 'Dammam', 'Kuwait City', 'Muscat', 'Manama', 'Istanbul', 'Ankara', 'Tehran', 'Baghdad', 'Kabul', 'Kathmandu', 'Dhaka', 'Colombo',
+            // East & Southeast Asia
+            'Tokyo', 'Osaka', 'Kyoto', 'Nagoya', 'Seoul', 'Busan', 'Beijing', 'Shanghai', 'Hong Kong', 'Taipei', 'Singapore', 'Kuala Lumpur', 'Bangkok', 'Jakarta', 'Manila', 'Hanoi', 'Ho Chi Minh City',
+            // Europe
+            'London', 'Paris', 'Berlin', 'Madrid', 'Barcelona', 'Rome', 'Milan', 'Naples', 'Amsterdam', 'Brussels', 'Vienna', 'Prague', 'Budapest', 'Warsaw', 'Zurich', 'Geneva', 'Lisbon', 'Oslo', 'Stockholm', 'Copenhagen', 'Helsinki', 'Dublin', 'Edinburgh', 'Glasgow',
+            // North America
+            'New York', 'Los Angeles', 'San Francisco', 'Chicago', 'Houston', 'Dallas', 'Miami', 'Atlanta', 'Boston', 'Seattle', 'Washington', 'Philadelphia', 'Toronto', 'Vancouver', 'Montreal', 'Mexico City',
+            // South America
+            'São Paulo', 'Rio de Janeiro', 'Buenos Aires', 'Lima', 'Bogotá', 'Santiago',
+            // Africa
+            'Cairo', 'Lagos', 'Johannesburg', 'Nairobi', 'Casablanca', 'Algiers', 'Tunis', 'Tripoli', 'Khartoum', 'Addis Ababa', 'Dar es Salaam', 'Kinshasa', 'Luanda', 'Lusaka', 'Harare', 'Gaborone', 'Windhoek', 'Maputo',
+            // Oceania
+            'Sydney', 'Melbourne', 'Perth', 'Auckland', 'Wellington',
+            // Indian Ocean islands
+            'Antananarivo', 'Port Louis', 'Victoria', 'Moroni', 'Saint-Denis'
+        ],
+        searchQuery: '',
+        searchResults: [],
+        weatherData: {},
+        loading: false,
+        cityLoadingStates: {}, // Track loading state for each city
+        
+        citySelectorOpen: false, // City selector dropdown state
+        cityFilter: '', // Filter for city selection
+        selectedCityIndex: null, // Index of city being edited
+        
+        // Initialize the component
+        init() {
+            console.log('City Comparison initialized');
+            // Load data after a short delay to ensure DOM is ready
+            setTimeout(() => {
+                this.loadComparisonData();
+            }, 100);
+        },
+        
+        // Search cities function - exactly like dashboard
+        searchCities() {
+            if (!this.searchQuery.trim()) {
+                this.searchResults = [];
+        return;
+    }
+            const query = this.searchQuery.toLowerCase();
+            this.searchResults = this.availableCities.filter(city => 
+                city.toLowerCase().includes(query)
+            ).slice(0, 10); // Limit to 10 results
+        },
+
+        // Select city from search - exactly like dashboard
+        selectCityFromSearch(city) {
+            this.searchQuery = '';
+            this.searchResults = [];
+            
+            // Add to selected cities if not already present
+            if (!this.selectedCities.includes(city)) {
+                // Find the first empty slot or add to the end
+                const emptyIndex = this.selectedCities.findIndex(c => !c || c.trim() === '');
+                if (emptyIndex !== -1) {
+                    this.selectedCities[emptyIndex] = city;
+                } else if (this.selectedCities.length < 5) {
+                this.selectedCities.push(city);
+                }
+                
+                // Automatically load weather data for the new city
+                setTimeout(() => {
+                    this.loadComparisonData();
+                }, 100);
+                
+                console.log(`Added city: ${city}, Total cities: ${this.selectedCities.length}`);
+            }
+        },
+
+        // Select city from text input - exactly like dashboard
+        selectCityFromText() {
+            const query = (this.searchQuery || '').trim();
+            if (!query) {
+                return;
+            }
+            
+            // Add the typed city to selected cities
+            if (!this.selectedCities.includes(query)) {
+                const emptyIndex = this.selectedCities.findIndex(c => !c || c.trim() === '');
+                if (emptyIndex !== -1) {
+                    this.selectedCities[emptyIndex] = query;
+                } else if (this.selectedCities.length < 5) {
+                    this.selectedCities.push(query);
+                }
+                
+                // Load weather data for the new city
+                setTimeout(() => {
+                    this.loadComparisonData();
+                }, 100);
+                
+                console.log(`Added typed city: ${query}, Total cities: ${this.selectedCities.length}`);
+            }
+            
+            this.searchQuery = '';
+            this.searchResults = [];
+        },
+
+        // Add a new city slot
+        addCity() {
+            if (this.selectedCities.length < 5) {
+                this.selectedCities.push('');
+                console.log(`Added empty city slot. Total slots: ${this.selectedCities.length}`);
+            }
+        },
+
+        // Remove a city
+        removeCity(index) {
+            const removedCity = this.selectedCities[index];
+            this.selectedCities.splice(index, 1);
+            
+            // Remove from weather data
+            if (removedCity && this.weatherData[removedCity]) {
+                delete this.weatherData[removedCity];
+            }
+            
+            // Reload comparison data after removal
+            setTimeout(() => {
+                this.loadComparisonData();
+            }, 100);
+            
+            console.log(`Removed city at index ${index}. Total cities: ${this.selectedCities.length}`);
+        },
+
+        // Handle city selection change
+        onCityChange(index) {
+            const city = this.selectedCities[index];
+            if (city && city.trim()) {
+                // Automatically load weather data when city is selected
+                this.loadComparisonData();
+            }
+        },
+
+        // Weather icon rendering helper - using the same configuration as home page and dashboard
+        renderWeatherIcon(condition, isNight, size, classes) {
+            if (!condition) return '';
+            
+            // Debug logging for icon selection
+            console.log(`Icon rendering for condition: "${condition}", isNight: ${isNight}`);
+            
+            // Use the same icon mapping as base.html
+            const day = {
+                // Sunny / Partly Cloudy
+                'clear sky': 'weather icons-05.png',
+                'clear': 'weather icons-05.png',
+                'cloudy with a chance of sun': 'weather icons-01.png',
+                'partly sunny': 'weather icons-01.png',
+                'sunny intervals': 'weather icons-01.png',
+                'few clouds': 'weather icons-01.png',
+                // Cloudy / Haze-like
+                'scattered clouds': 'weather icons-04.png',
+                'broken clouds': 'weather icons-04.png',
+                'overcast clouds': 'weather icons-04.png',
+                'clouds': 'weather icons-04.png',
+                'mist': 'weather icons-04.png',
+                'fog': 'weather icons-04.png',
+                'haze': 'weather icons-04.png',
+                'smoke': 'weather icons-03.png',
+                'sand': 'weather icons-14.png',
+                'dust': 'weather icons-03.png',
+                'ash': 'weather icons-03.png',
+                // Rain (light)
+                'drizzle': 'weather icons-07.png',
+                'light rain': 'weather icons-07.png',
+                'light intensity rain': 'weather icons-07.png',
+                'light intensity shower rain': 'weather icons-07.png',
+                'ragged shower rain': 'weather icons-07.png',
+                // Rain (moderate/heavy)
+                'rain': 'weather icons-10.png',
+                'moderate rain': 'weather icons-10.png',
+                'shower rain': 'weather icons-10.png',
+                'heavy intensity rain': 'weather icons-10.png',
+                'very heavy rain': 'weather icons-10.png',
+                'extreme rain': 'weather icons-10.png',
+                // Thunderstorm
+                'thunderstorm': 'weather icons-09.png',
+                'thunderstorm with light rain': 'weather icons-09.png',
+                'thunderstorm with rain': 'weather icons-09.png',
+                'thunderstorm with heavy rain': 'weather icons-09.png',
+                // Snow / Freezing
+                'light snow': 'weather icons-12.png',
+                'snow': 'weather icons-12.png',
+                'sleet': 'weather icons-12.png',
+                'rain and snow': 'weather icons-12.png',
+                'shower snow': 'weather icons-12.png',
+                'heavy shower snow': 'weather icons-12.png',
+                'freezing rain': 'weather icons-11.png',
+                'cold': 'weather icons-11.png',
+                'freezing': 'weather icons-11.png',
+                'frost': 'weather icons-11.png',
+                // Heat / Special
+                'temperature rising': 'weather icons-03.png',
+                'hot': 'weather icons-03.png',
+                'high temperature': 'weather icons-03.png',
+                'extreme heat': 'weather icons-03.png',
+                'rainbow': 'weather icons-13.png',
+                // Wind / Tornado
+                'squall': 'weather icons-14.png',
+                'strong breeze': 'weather icons-14.png',
+                'high wind': 'weather icons-14.png',
+                'near gale': 'weather icons-15.png',
+                'gale': 'weather icons-15.png',
+                'severe gale': 'weather icons-15.png',
+                'tornado': 'weather icons-16.png'
+            };
+            
+            const night = {
+                // Clear / Partly Cloudy Night
+                'clear sky': 'weather icons-08.png',
+                'clear': 'weather icons-08.png',
+                'cloudy with a chance of moon': 'weather icons-02.png',
+                'partly cloudy night': 'weather icons-02.png',
+                'moon intervals': 'weather icons-02.png',
+                'few clouds': 'weather icons-02.png',
+                // Cloudy / Haze-like Night
+                'scattered clouds': 'weather icons-04.png',
+                'broken clouds': 'weather icons-04.png',
+                'overcast clouds': 'weather icons-04.png',
+                'clouds': 'weather icons-04.png',
+                'mist': 'weather icons-04.png',
+                'fog': 'weather icons-04.png',
+                'haze': 'weather icons-04.png',
+                'smoke': 'weather icons-03.png',
+                'sand': 'weather icons-14.png',
+                'dust': 'weather icons-03.png',
+                'ash': 'weather icons-03.png',
+                // Rain (light) Night
+                'drizzle': 'weather icons-07.png',
+                'light rain': 'weather icons-07.png',
+                'light intensity rain': 'weather icons-07.png',
+                'light intensity shower rain': 'weather icons-07.png',
+                'ragged shower rain': 'weather icons-07.png',
+                // Rain (moderate/heavy) Night
+                'rain': 'weather icons-10.png',
+                'moderate rain': 'weather icons-10.png',
+                'shower rain': 'weather icons-10.png',
+                'heavy intensity rain': 'weather icons-10.png',
+                'very heavy rain': 'weather icons-10.png',
+                'extreme rain': 'weather icons-10.png',
+                // Thunderstorm Night
+                'thunderstorm': 'weather icons-09.png',
+                'thunderstorm with light rain': 'weather icons-09.png',
+                'thunderstorm with rain': 'weather icons-09.png',
+                'thunderstorm with heavy rain': 'weather icons-09.png',
+                // Snow / Freezing Night
+                'light snow': 'weather icons-12.png',
+                'snow': 'weather icons-12.png',
+                'sleet': 'weather icons-12.png',
+                'rain and snow': 'weather icons-12.png',
+                'shower snow': 'weather icons-12.png',
+                'heavy shower snow': 'weather icons-12.png',
+                'freezing rain': 'weather icons-11.png',
+                'cold': 'weather icons-11.png',
+                'freezing': 'weather icons-11.png',
+                'frost': 'weather icons-11.png',
+                // Heat / Special Night
+                'temperature rising': 'weather icons-03.png',
+                'hot': 'weather icons-03.png',
+                'high temperature': 'weather icons-03.png',
+                'extreme heat': 'weather icons-03.png',
+                'rainbow': 'weather icons-13.png',
+                // Wind / Tornado Night
+                'squall': 'weather icons-14.png',
+                'strong breeze': 'weather icons-14.png',
+                'high wind': 'weather icons-14.png',
+                'near gale': 'weather icons-15.png',
+                'gale': 'weather icons-15.png',
+                'severe gale': 'weather icons-15.png',
+                'tornado': 'weather icons-16.png'
+            };
+            
+            const safe = String(condition).toLowerCase();
+            const table = isNight ? night : day;
+            let file = table[safe];
+            
+            // Debug logging for icon selection
+            console.log(`Icon selection: condition="${safe}", isNight=${isNight}, table=${isNight ? 'night' : 'day'}, selected icon=${file}`);
+            
+            // Fallback: try to find partial matches
+            if (!file) {
+                for (const k of Object.keys(table)) {
+                    if (safe.includes(k) || k.includes(safe)) { 
+                        file = table[k]; 
+                        console.log(`Fallback icon found: "${k}" -> "${file}"`);
+                        break; 
+                    }
+                }
+            }
+            
+            // Default fallback
+            const iconPath = file ? `/static/icons/${file}` : (isNight ? '/static/icons/weather icons-08.png' : '/static/icons/weather icons-05.png');
+            console.log(`Final icon path: ${iconPath}`);
+            
+            return `<img src="${iconPath}" alt="${condition}" class="${size} ${classes}" onerror="this.style.display='none'">`;
+        },
+
+        // Check if it's night time based on sunrise/sunset (using city's local time)
+        isNightBySunTimes(sunrise, sunset) {
+            if (!sunrise || !sunset) return false;
+            
+            try {
+                const now = Math.floor(Date.now() / 1000);
+                const isNight = now < sunrise || now > sunset;
+                
+                // Debug logging
+                console.log(`Night detection for city:`, {
+                    now: new Date(now * 1000).toLocaleTimeString(),
+                    sunrise: new Date(sunrise * 1000).toLocaleTimeString(),
+                    sunset: new Date(sunset * 1000).toLocaleTimeString(),
+                    isNight: isNight
+                });
+                
+                return isNight;
+            } catch (error) {
+                console.error('Error in isNightBySunTimes:', error);
+                return false;
+            }
+        },
+
+        // Check if it's currently night time for a specific city (using city's local timezone)
+        isCurrentlyNightForCity(city) {
+            if (!city || !this.weatherData[city]) return false;
+            
+            try {
+                const weather = this.weatherData[city];
+                if (!weather.sunrise || !weather.sunset) return false;
+                
+                // Use the city's actual sunrise/sunset times (these are in UTC)
+                // Convert to city's local time for accurate day/night detection
+                const now = Math.floor(Date.now() / 1000);
+                const isNight = now < weather.sunrise || now > weather.sunset;
+                
+                console.log(`City-specific night detection for ${city}:`, {
+                    city: city,
+                    now: new Date(now * 1000).toLocaleTimeString(),
+                    sunrise: new Date(weather.sunrise * 1000).toLocaleTimeString(),
+                    sunset: new Date(weather.sunset * 1000).toLocaleTimeString(),
+                    isNight: isNight
+                });
+                
+                return isNight;
+            } catch (error) {
+                console.error(`Error in isCurrentlyNightForCity for ${city}:`, error);
+                return false;
+            }
+        },
+
+        // Get weather card background class based on city's local time
+        getWeatherCardBackground(city) {
+            if (!city || !this.weatherData[city]) return 'bg-gradient-to-br from-blue-500 to-indigo-600';
+            
+            const weather = this.weatherData[city];
+            // Use city-specific night detection instead of global time
+            const isNight = this.isCurrentlyNightForCity(city);
+            
+            console.log(`Background for ${city}: sunrise=${weather.sunrise}, sunset=${weather.sunset}, isNight=${isNight}`);
+            
+            if (isNight) {
+                return 'bg-gradient-to-br from-indigo-900 to-purple-900';
+            } else {
+                return 'bg-gradient-to-br from-blue-500 to-indigo-600';
+            }
+        },
+
+        // Check if a specific city is loading
+        isCityLoading(city) {
+            return this.cityLoadingStates[city] === true;
+        },
+
+        // Check if a city has weather data
+        hasWeatherData(city) {
+            return this.weatherData[city] && !this.weatherData[city].error;
+        },
+
+        // Toggle day/night mode for testing
+        toggleDayNightMode() {
+            // Toggle between day and night mode
+            if (this.manualNightMode === undefined) {
+                // First click: force night mode
+                this.manualNightMode = true;
+            } else if (this.manualNightMode === true) {
+                // Second click: force day mode
+                this.manualNightMode = false;
+            } else {
+                // Third click: back to automatic
+                this.manualNightMode = undefined;
+            }
+            
+            console.log('Manual night mode:', this.manualNightMode);
+        },
+
+        // Open the city selector dropdown
+        openCitySelector(index) {
+            this.citySelectorOpen = true;
+            this.cityFilter = ''; // Clear filter when opening
+            this.selectedCityIndex = index; // Store the index of the clicked city
+        },
+
+        // Select a city for the current slot
+        selectCityForSlot(city) {
+            this.selectedCities[this.selectedCityIndex] = city;
+            this.citySelectorOpen = false;
+            this.cityFilter = ''; // Clear filter after selection
+            this.loadComparisonData();
+            console.log(`Selected city for slot ${this.selectedCityIndex}: ${city}`);
+        },
+
+        async loadComparisonData() {
+            this.loading = true;
+            this.weatherData = {};
+            
+            try {
+                // Load weather data for all selected cities
+                const loadPromises = this.selectedCities
+                    .filter(city => city && city.trim()) // Only load for non-empty cities
+                    .map(async (city) => {
+                        // Set loading state for this city
+                        this.cityLoadingStates[city] = true;
+                        
+                        try {
+                            const response = await fetch(`/api/current-weather/?city=${encodeURIComponent(city)}`);
+                            if (!response.ok) {
+                                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                            }
+                    const data = await response.json();
+                    if (!data.error) {
+                        this.weatherData[city] = data;
+                                console.log(`Weather data loaded for ${city}:`, data);
+                            } else {
+                                console.error(`Error loading weather for ${city}:`, data.error);
+                    }
+                        } catch (error) {
+                            console.error(`Failed to load weather for ${city}:`, error);
+                        } finally {
+                            // Clear loading state for this city
+                            this.cityLoadingStates[city] = false;
+                }
+                    });
+                
+                // Wait for all cities to load
+                await Promise.all(loadPromises);
+                
+                // Update charts after data is loaded with a delay to ensure DOM is ready
+                setTimeout(() => {
+                this.updateComparisonCharts();
+                }, 200);
+                
+            } catch (error) {
+                console.error('Error loading comparison data:', error);
+            } finally {
+                this.loading = false;
+            }
+        },
+        
+        updateComparisonCharts() {
+            // Update temperature comparison chart
+            if (window.temperatureComparisonChart && typeof window.temperatureComparisonChart.destroy === 'function') {
+                window.temperatureComparisonChart.destroy();
+            }
+            
+            if (window.humidityComparisonChart && typeof window.humidityComparisonChart.destroy === 'function') {
+                window.humidityComparisonChart.destroy();
+            }
+            
+            const cities = Object.keys(this.weatherData);
+            if (cities.length === 0) return;
+            
+            const temperatures = cities.map(city => this.weatherData[city].temperature);
+            const humidity = cities.map(city => this.weatherData[city].humidity);
+            
+            console.log('Chart data:', { cities, temperatures, humidity });
+            
+    // Temperature Comparison Chart
+            const tempCtx = document.getElementById('temperatureComparisonChart');
+            if (tempCtx) {
+                window.temperatureComparisonChart = new Chart(tempCtx.getContext('2d'), {
+        type: 'bar',
+        data: {
+                        labels: cities.map(city => city.charAt(0).toUpperCase() + city.slice(1).toLowerCase()),
+            datasets: [{
+                label: 'Temperature (°C)',
+                            data: temperatures,
+                            backgroundColor: cities.map((_, index) => {
+                                const colors = [
+                                    'rgba(59, 130, 246, 0.85)',   // Blue
+                                    'rgba(139, 92, 246, 0.85)',  // Violet
+                                    'rgba(236, 72, 153, 0.85)'   // Pink
+                                ];
+                                return colors[index % colors.length];
+                            }),
+                            borderColor: cities.map((_, index) => {
+                                const colors = [
+                                    '#3b82f6',   // Blue
+                                    '#8b5cf6',   // Violet
+                                    '#ec4899'    // Pink
+                                ];
+                                return colors[index % colors.length];
+                            }),
+                            borderWidth: 2,
+                            borderRadius: {
+                                topLeft: 12,
+                                topRight: 12,
+                                bottomLeft: 0,
+                                bottomRight: 0
+                            },
+                            borderSkipped: false,
+                            hoverBackgroundColor: cities.map((_, index) => {
+                                const colors = [
+                                    'rgba(59, 130, 246, 1)',   // Blue
+                                    'rgba(139, 92, 246, 1)',  // Violet
+                                    'rgba(236, 72, 153, 1)'   // Pink
+                                ];
+                                return colors[index % colors.length];
+                            }),
+                            hoverBorderWidth: 3,
+                            barThickness: 35,
+                            maxBarThickness: 40
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                            },
+                            tooltip: {
+                                backgroundColor: 'rgba(0, 0, 0, 0.9)',
+                                titleColor: '#fff',
+                                bodyColor: '#fff',
+                                borderColor: '#3b82f6',
+                                borderWidth: 2,
+                                cornerRadius: 12,
+                                displayColors: false,
+                                padding: 12,
+                                titleFont: {
+                                    size: 14,
+                                    weight: '600'
+                                },
+                                bodyFont: {
+                                    size: 13
+                                },
+                                callbacks: {
+                                    label: function(context) {
+                                        return `Temperature: ${context.parsed.y}°C`;
+                                    }
+                                }
+                }
+            },
+            scales: {
+                y: {
+                                beginAtZero: false,
+                                grid: {
+                                    color: 'rgba(0, 0, 0, 0.08)',
+                                    drawBorder: false,
+                                    lineWidth: 1
+                                },
+                                ticks: {
+                                    color: '#6b7280',
+                                    font: {
+                                        size: 11,
+                                        weight: '600'
+                                    },
+                                    padding: 8
+                                },
+                                border: {
+                                    display: false
+                                }
+                            },
+                            x: {
+                                grid: {
+                                    display: false
+                                },
+                                ticks: {
+                                    color: '#6b7280',
+                                    font: {
+                                        size: 12,
+                                        weight: '600'
+                                    },
+                                    padding: 8
+                                },
+                                border: {
+                                    display: false
+                                }
+                            }
+                        },
+                        animation: {
+                            duration: 1500,
+                            easing: 'easeOutQuart'
+                        },
+                        interaction: {
+                            intersect: false,
+                            mode: 'index'
+            }
+        }
+    });
+            }
+
+    // Humidity Comparison Chart
+            const humCtx = document.getElementById('humidityComparisonChart');
+            if (humCtx) {
+                window.humidityComparisonChart = new Chart(humCtx.getContext('2d'), {
+                    type: 'bar',
+        data: {
+                        labels: cities.map(city => city.charAt(0).toUpperCase() + city.slice(1).toLowerCase()),
+            datasets: [{
+                            label: 'Humidity (%)',
+                            data: humidity,
+                            backgroundColor: cities.map((_, index) => {
+                                const colors = [
+                                    'rgba(16, 185, 129, 0.85)',  // Emerald
+                                    'rgba(6, 182, 212, 0.85)',   // Cyan
+                                    'rgba(59, 130, 246, 0.85)'   // Blue
+                                ];
+                                return colors[index % colors.length];
+                            }),
+                            borderColor: cities.map((_, index) => {
+                                const colors = [
+                                    '#10b981',  // Emerald
+                                    '#06b6d4',  // Cyan
+                                    '#3b82f6'   // Blue
+                                ];
+                                return colors[index % colors.length];
+                            }),
+                            borderWidth: 2,
+                            borderRadius: {
+                                topLeft: 12,
+                                topRight: 12,
+                                bottomLeft: 0,
+                                bottomRight: 0
+                            },
+                            borderSkipped: false,
+                            hoverBackgroundColor: cities.map((_, index) => {
+                                const colors = [
+                                    'rgba(16, 185, 129, 1)',  // Emerald
+                                    'rgba(6, 182, 212, 1)',   // Cyan
+                                    'rgba(59, 130, 246, 1)'   // Blue
+                                ];
+                                return colors[index % colors.length];
+                            }),
+                            hoverBorderWidth: 3,
+                            barThickness: 35,
+                            maxBarThickness: 40
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                            },
+                            tooltip: {
+                                backgroundColor: 'rgba(0, 0, 0, 0.9)',
+                                titleColor: '#fff',
+                                bodyColor: '#fff',
+                                borderColor: '#10b981',
+                                borderWidth: 2,
+                                cornerRadius: 12,
+                                displayColors: false,
+                                padding: 12,
+                                titleFont: {
+                                    size: 14,
+                                    weight: '600'
+                                },
+                                bodyFont: {
+                                    size: 13
+                                },
+                                callbacks: {
+                                    label: function(context) {
+                                        return `Humidity: ${context.parsed.y}%`;
+                                    }
+                                }
+                }
+            },
+            scales: {
+                y: {
+                                beginAtZero: true,
+                                max: 100,
+                                grid: {
+                                    color: 'rgba(0, 0, 0, 0.08)',
+                                    drawBorder: false,
+                                    lineWidth: 1
+                                },
+                                ticks: {
+                                    color: '#6b7280',
+                                    font: {
+                                        size: 11,
+                                        weight: '600'
+                                    },
+                                    padding: 8
+                                },
+                                border: {
+                                    display: false
+                                }
+                            },
+                            x: {
+                                grid: {
+                                    display: false
+                                },
+                                ticks: {
+                                    color: '#6b7280',
+                                    font: {
+                                        size: 12,
+                                        weight: '600'
+                                    },
+                                    padding: 8
+                                },
+                                border: {
+                                    display: false
+                                }
+                            }
+                        },
+                        animation: {
+                            duration: 1500,
+                            easing: 'easeOutQuart'
+                        },
+                        interaction: {
+                            intersect: false,
+                            mode: 'index'
+            }
+        }
+    });
+}
+            
+            console.log('Charts updated successfully');
+        },
+
+        // Get AQI color class based on value
+        getAQIColorClass(aqi) {
+            if (aqi <= 1) return 'bg-green-500';
+            if (aqi <= 2) return 'bg-yellow-500';
+            if (aqi <= 3) return 'bg-orange-500';
+            if (aqi <= 4) return 'bg-red-500';
+            return 'bg-purple-500';
+        },
+
+        // Get temperature range across cities
+        getTemperatureRange() {
+            const temps = Object.values(this.weatherData)
+                .filter(w => w && w.temperature)
+                .map(w => w.temperature);
+            if (temps.length === 0) return '--';
+            const min = Math.min(...temps);
+            const max = Math.max(...temps);
+            return `${(max - min).toFixed(1)}°C`;
+        },
+
+        // Get average humidity across cities
+        getHumidityAverage() {
+            const humidities = Object.values(this.weatherData)
+                .filter(w => w && w.humidity)
+                .map(w => w.humidity);
+            if (humidities.length === 0) return '--';
+            const avg = humidities.reduce((a, b) => a + b, 0) / humidities.length;
+            return `${Math.round(avg)}%`;
+        },
+
+        // Get average wind speed across cities
+        getWindSpeedAverage() {
+            const windSpeeds = Object.values(this.weatherData)
+                .filter(w => w && w.wind_speed)
+                .map(w => w.wind_speed);
+            if (windSpeeds.length === 0) return '--';
+            const avg = windSpeeds.reduce((a, b) => a + b, 0) / windSpeeds.length;
+            return `${avg.toFixed(1)} m/s`;
+        },
+
+        // Get average air quality across cities
+        getAirQualityAverage() {
+            const aqis = Object.values(this.weatherData)
+                .filter(w => w && w.aqi)
+                .map(w => w.aqi);
+            if (aqis.length === 0) return '--';
+            const avg = aqis.reduce((a, b) => a + b, 0) / aqis.length;
+            return Math.round(avg);
+        },
+
+        // Open city selector for a specific slot
+        openCitySelector(index) {
+            this.selectedCityIndex = index;
+            this.cityFilter = '';
+            this.citySelectorOpen = true;
+        },
+
+        // Select city for a specific slot
+        selectCityForSlot(city) {
+            if (this.selectedCityIndex !== null) {
+                this.selectedCities[this.selectedCityIndex] = city;
+                this.citySelectorOpen = false;
+                this.selectedCityIndex = null;
+                
+                // Automatically load weather data for the new city
+                setTimeout(() => {
+                    this.loadComparisonData();
+                }, 100);
+            }
+        },
+    }));
+});
+</script>
+{% endblock %}

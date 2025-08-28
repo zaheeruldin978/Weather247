@@ -1,0 +1,11 @@
+SECRET_KEY=django-insecure-weather247-secret-key-change-in-production
+DEBUG=True
+ALLOWED_HOSTS=localhost,127.0.0.1
+OPENWEATHER_API_KEY=your-openweather-api-key
+# SMS Configuration (for future implementation)
+# SMS_ACCOUNT_SID=
+# SMS_AUTH_TOKEN=
+# SMS_PHONE_NUMBER=
+
+
+
